@@ -1,15 +1,10 @@
 import cv2
 import numpy as np
-import os  # <--- BẮT BUỘC PHẢI CÓ DÒNG NÀY ĐỂ LƯU FILE
+import os
 
 class ImageProcessor:
     def __init__(self):
         pass
-
-    # =========================================================================
-    # PHẦN 1: CORE LOGIC - TÍCH CHẬP TỐI ƯU (VECTORIZED)
-    # =========================================================================
-    
     def _manual_convolution(self, image, kernel):
         h_img, w_img = image.shape[:2]
         k_height, k_width = kernel.shape
@@ -36,9 +31,6 @@ class ImageProcessor:
 
         return np.clip(output, 0, 255).astype(np.uint8)
 
-    # =========================================================================
-    # PHẦN 2: NHẬP/XUẤT (ĐÃ FIX LỖI TIẾNG VIỆT HOÀN TOÀN)
-    # =========================================================================
     
     def load_image(self, file_path):
         if file_path.endswith('.csv'):
@@ -61,10 +53,6 @@ class ImageProcessor:
                 raise ValueError(f"Lỗi đọc ảnh: {e}")
 
     def save_image(self, image, file_path):
-        """
-        Hàm lưu ảnh ĐÃ FIX LỖI TIẾNG VIỆT.
-        Thay vì dùng cv2.imwrite (lỗi), ta dùng cv2.imencode + write binary.
-        """
         try:
             # 1. Lưu CSV
             if file_path.endswith('.csv'):
@@ -74,7 +62,6 @@ class ImageProcessor:
                     gray = image
                 np.savetxt(file_path, gray, delimiter=",", fmt='%d')
 
-            # 2. Lưu Ảnh (Fix lỗi path tiếng Việt)
             else:
                 # Chuyển về BGR
                 img_bgr = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
@@ -96,10 +83,6 @@ class ImageProcessor:
         except Exception as e:
             print(f"Lỗi save: {e}")
             raise e
-
-    # =========================================================================
-    # PHẦN 3: CÁC BỘ LỌC
-    # =========================================================================
 
     def apply_mean_filter(self, image, kernel_size):
         if kernel_size % 2 == 0: kernel_size += 1
@@ -135,10 +118,6 @@ class ImageProcessor:
             windows = sliding_window_view(img_pad, window_shape=(kernel_size, kernel_size))
             output = np.median(windows, axis=(2, 3))
         return output.astype(np.uint8)
-
-    # =========================================================================
-    # PHẦN 4: PHÁT HIỆN BIÊN
-    # =========================================================================
 
     def _prepare_gray(self, image):
         if len(image.shape) == 3:
