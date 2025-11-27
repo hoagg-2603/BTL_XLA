@@ -44,7 +44,6 @@ class ImageProcessor:
                 return np.zeros((300, 300, 3), dtype=np.uint8)
         else:
             try:
-                # Fix lỗi đọc đường dẫn tiếng Việt
                 stream = np.fromfile(file_path, dtype=np.uint8)
                 img = cv2.imdecode(stream, cv2.IMREAD_COLOR)
                 if img is None: raise ValueError("File lỗi")
@@ -119,31 +118,52 @@ class ImageProcessor:
             output = np.median(windows, axis=(2, 3))
         return output.astype(np.uint8)
 
+
     def _prepare_gray(self, image):
         if len(image.shape) == 3:
             return cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
         return image
 
-    def apply_sobel(self, image):
+    def _apply_threshold(self, image_gray, threshold):
+        if threshold is not None and threshold > 0:
+            # Nếu pixel > threshold -> Trắng (255), ngược lại -> Đen (0)
+            _, binary = cv2.threshold(image_gray, threshold, 255, cv2.THRESH_BINARY)
+            return cv2.cvtColor(binary, cv2.COLOR_GRAY2RGB)
+        else:
+            # Nếu không chọn ngưỡng (hoặc = 0), trả về ảnh độ lớn biên (Gradient Magnitude)
+            return cv2.cvtColor(image_gray, cv2.COLOR_GRAY2RGB)
+
+    def apply_sobel(self, image, threshold=None):
         gray = self._prepare_gray(image)
         Gx = np.array([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]], dtype=np.float32)
         Gy = np.array([[-1, -2, -1], [0, 0, 0], [1, 2, 1]], dtype=np.float32)
+        
         val_x = self._manual_convolution(gray, Gx)
         val_y = self._manual_convolution(gray, Gy)
+        
+        # Tính độ lớn biên tổng hợp
         combined = cv2.addWeighted(np.abs(val_x), 0.5, np.abs(val_y), 0.5, 0)
-        return cv2.cvtColor(combined.astype(np.uint8), cv2.COLOR_GRAY2RGB)
+        combined = combined.astype(np.uint8)
+        
+        return self._apply_threshold(combined, threshold)
 
-    def apply_prewitt(self, image):
+    def apply_prewitt(self, image, threshold=None):
         gray = self._prepare_gray(image)
         Kx = np.array([[-1, 0, 1], [-1, 0, 1], [-1, 0, 1]], dtype=np.float32)
         Ky = np.array([[-1, -1, -1], [0, 0, 0], [1, 1, 1]], dtype=np.float32)
+        
         val_x = self._manual_convolution(gray, Kx)
         val_y = self._manual_convolution(gray, Ky)
+        
         combined = cv2.addWeighted(np.abs(val_x), 0.5, np.abs(val_y), 0.5, 0)
-        return cv2.cvtColor(combined.astype(np.uint8), cv2.COLOR_GRAY2RGB)
+        combined = combined.astype(np.uint8)
+        
+        return self._apply_threshold(combined, threshold)
 
-    def apply_laplacian(self, image):
+    def apply_laplacian(self, image, threshold=None):
         gray = self._prepare_gray(image)
         K = np.array([[0, 1, 0], [1, -4, 1], [0, 1, 0]], dtype=np.float32)
+        
         val = self._manual_convolution(gray, K)
-        return cv2.cvtColor(val, cv2.COLOR_GRAY2RGB)
+        # Laplacian chỉ có 1 kênh kết quả
+        return self._apply_threshold(val, threshold)
